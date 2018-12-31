@@ -1,2 +1,4 @@
-# Telegram-Message-Analyzer
-Process the exported Telegram chat history .html.and generate a report message count by date &amp; time of day, most used words.
+# Telegram Message Analyzer
+Process the exported Telegram chat history .html.
+Generate a .txt report on message count by date &amp; time of day (with graphs) and list of most used words.
+Change 'filepath' variable (under 'Process preparation') to the path where all the messages#.html are located.
