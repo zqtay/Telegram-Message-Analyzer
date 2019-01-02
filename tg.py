@@ -103,7 +103,7 @@ if True:
     msgratio1=round(msgcount1/msgcounttot, 3)
     avgmsgday0=f'{round(msgcount0/len(mcdf.index), 3)} +- {round(mcdf[name0].std(),3)}'
     avgmsgday1=f'{round(msgcount1/len(mcdf.index), 3)} +- {round(mcdf[name1].std(),3)}'
-    medmsgday0=mcdf[name1].median()
+    medmsgday0=mcdf[name0].median()
     medmsgday1=mcdf[name1].median()
 
     # Character count
