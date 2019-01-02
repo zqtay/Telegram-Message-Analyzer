@@ -9,8 +9,10 @@ if True:
     import os
     from datetime import datetime as dt
 
-    filepath='C:\\Users\\User\\Desktop\\ChatExport_30_12_2018' # Change to the path where all the messages#.html are located
-    os.chdir(filepath)
+    print('Telegram Message Analyzer 19.1.2a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
+          'Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.\n')
+    folderpath=input('Please enter the directory path where all the messages#.html are located:\n')
+    os.chdir(folderpath)
 
 # Empty variables creation
 if True:
@@ -22,7 +24,7 @@ if True:
 
 # HTML parsing
 if True:
-    pgind=['']+[str(i) for i in range(2,1+len([i for i in os.listdir(filepath) if i.startswith('message') and i.endswith('.html')]))]
+    pgind=['']+[str(i) for i in range(2, 1 + len([i for i in os.listdir(folderpath) if i.startswith('message') and i.endswith('.html')]))]
     for n in pgind:
         page=open('.\\messages'+n+'.html',encoding='utf8')
         soup = BeautifulSoup(page,'html.parser')
@@ -75,7 +77,7 @@ if True:
     #Message count by date
     msgcountdf=pd.DataFrame(msgcount)
     msgcountdf.fillna(0,inplace=True)
-    msgcountdf.index = pd.to_datetime(msgcountdf.index,format='%d.%m.%Y')
+    msgcountdf.index = [dt.strptime(x,'%d.%m.%Y').strftime('%Y-%m-%d') for x in msgcountdf.index]
     msgcountdf.sort_index(inplace=True)
     msgcountdf=msgcountdf.astype(int)
     mcdf=msgcountdf[msgcountdf.columns[0:2]]
@@ -94,14 +96,15 @@ if True:
 # Data analysis
 if True:
     # Message count
-    stat0=[]
     msgcount0=sum(mcdf[name0])
     msgcount1=sum(mcdf[name1])
     msgcounttot=msgcount0+msgcount1
     msgratio0=round(msgcount0/msgcounttot, 3)
     msgratio1=round(msgcount1/msgcounttot, 3)
-    avgmsgday0=round(msgcount0/len(mcdf.index), 3)
-    avgmsgday1=round(msgcount1/len(mcdf.index), 3)
+    avgmsgday0=f'{round(msgcount0/len(mcdf.index), 3)} +- {round(mcdf[name0].std(),3)}'
+    avgmsgday1=f'{round(msgcount1/len(mcdf.index), 3)} +- {round(mcdf[name1].std(),3)}'
+    medmsgday0=mcdf[name1].median()
+    medmsgday1=mcdf[name1].median()
 
     # Character count
     charcount0=len(msgtext[name0].replace(' ',''))
@@ -124,15 +127,16 @@ if True:
         topwords[name]=sorted(wordcount[name],key=wordcount[name].get, reverse=True)
 
     # Summary in dataframes
-    textrep=pd.DataFrame(data=[[msgcount0, msgratio0, charcount0, charratio0, avgmsgday0, charmsg0],
-                               [msgcount1, msgratio1, charcount1, charratio1, avgmsgday1, charmsg1]],
+    textrep=pd.DataFrame(data=[[msgcount0, msgratio0, charcount0, charratio0, charmsg0, avgmsgday0, medmsgday0],
+                               [msgcount1, msgratio1, charcount1, charratio1, charmsg1, avgmsgday1, medmsgday1]],
                          index=[name0,name1],
                          columns=['Total message count',
                                   'Total message ratio',
                                   'Total character count',
                                   'Total character ratio',
+                                  'Average character count per message',
                                   'Average message count per day',
-                                  'Average character count per message']).T.astype(str)
+                                  'Median message count per day']).T.astype(str)
     topwords0=pd.DataFrame(data=[wordcount[name0][x] for x in topwords[name0][0:100]],
                         index=topwords[name0][0:100],
                         columns=[name0])
@@ -144,9 +148,9 @@ if True:
 if True:
     # Message count vs. date
     graphdate=plt.figure(1)
-    plt.plot([date for date in mcdf.index], mcdf[name0], label=name0)
-    plt.plot([date for date in mcdf.index], mcdf[name1], label=name1)
-    plt.title(names[0]+' & '+names[1]+' Telegram Message Frequency by Date')
+    plt.plot([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name0], label=name0)
+    plt.plot([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name1], label=name1)
+    plt.title(f'{name0} & {name1}\nWhatsApp Message Count by Date')
     plt.xlabel('Date')
     plt.ylabel('No. of messages')
     plt.legend()
@@ -155,7 +159,7 @@ if True:
     graphhr=plt.figure(2)
     plt.plot([hr for hr in mchdf.index],mchdf[name0],label=name0)
     plt.plot([hr for hr in mchdf.index],mchdf[name1],label=name1)
-    plt.title(names[0]+' & '+names[1]+' Telegram Message Frequency by Time of Day')
+    plt.title(f'{name0} & {name1}\nWhatsApp Message Count by Time of Day')
     plt.xlabel('Time of day')
     plt.ylabel('No. of messages')
     plt.legend()
@@ -170,10 +174,10 @@ if False:
 if True:
     newfolder=str(dt.now()).replace(':','.')
     os.makedirs(newfolder)
-    with open(newfolder+'\\tganalysis.txt','w',encoding='utf8') as f:
+    with open(f'{newfolder}\\tganalysis.txt','w',encoding='utf8') as f:
         f.writelines("%s\n\n" % line for line in
-                     [names[0] +' & ' + names[1] +' Telegram Message Analysis Report\n'+
-                      'From ' + str(mcdf.index[0]).split()[0] + ' To ' + str(mcdf.index[-1]).split()[0]+':',
+                     [f'{name0} & {name1} Whatsapp Message Analysis Report\n'+
+                      f'From {str(mcdf.index[0]).split()[0]} To {str(mcdf.index[-1]).split()[0]}:',
                       '(This analysis report is generated on '+newfolder+')',
                       'Summary:',
                       textrep.to_string(),
@@ -185,6 +189,6 @@ if True:
                       topwords0.to_string(),
                       topwords1.to_string()])
         f.close()
-    graphdate.savefig(newfolder+'\\graphdate')
-    graphhr.savefig(newfolder+'\\graphhr')
-    print('Result and graphs are saved in',filepath+'\\'+newfolder)
+    graphdate.savefig(f'{newfolder}\graphdate')
+    graphhr.savefig(f'{newfolder}\graphhr')
+    print(f'Result and graphs are saved in {os.getcwd()}\\{newfolder}')
