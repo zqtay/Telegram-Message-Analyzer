@@ -148,18 +148,18 @@ if True:
 if True:
     # Message count vs. date
     graphdate=plt.figure(1)
-    plt.plot([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name0], label=name0)
-    plt.plot([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name1], label=name1)
-    plt.title(f'{name0} & {name1}\nWhatsApp Message Count by Date')
+    plt.bar([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name0], label=name0)
+    plt.bar([dt.strptime(date,'%Y-%m-%d') for date in mcdf.index], mcdf[name1], label=name1, bottom=mcdf[name0])
+    plt.title(f'{name0} & {name1}\nTelegram Message Count by Date')
     plt.xlabel('Date')
     plt.ylabel('No. of messages')
     plt.legend()
 
     # Message count vs. hour of day
     graphhr=plt.figure(2)
-    plt.plot([hr for hr in mchdf.index],mchdf[name0],label=name0)
-    plt.plot([hr for hr in mchdf.index],mchdf[name1],label=name1)
-    plt.title(f'{name0} & {name1}\nWhatsApp Message Count by Time of Day')
+    plt.bar([hr for hr in mchdf.index],mchdf[name0],label=name0)
+    plt.bar([hr for hr in mchdf.index],mchdf[name1],label=name1,bottom=mchdf[name0])
+    plt.title(f'{name0} & {name1}\nTelegram Message Count by Time of Day')
     plt.xlabel('Time of day')
     plt.ylabel('No. of messages')
     plt.legend()
@@ -176,7 +176,7 @@ if True:
     os.makedirs(newfolder)
     with open(f'{newfolder}\\tganalysis.txt','w',encoding='utf8') as f:
         f.writelines("%s\n\n" % line for line in
-                     [f'{name0} & {name1} Whatsapp Message Analysis Report\n'+
+                     [f'{name0} & {name1} Telegram Message Analysis Report\n'+
                       f'From {str(mcdf.index[0]).split()[0]} To {str(mcdf.index[-1]).split()[0]}:',
                       '(This analysis report is generated on '+newfolder+')',
                       'Summary:',
@@ -191,4 +191,6 @@ if True:
         f.close()
     graphdate.savefig(f'{newfolder}\graphdate')
     graphhr.savefig(f'{newfolder}\graphhr')
-    print(f'Result and graphs are saved in {os.getcwd()}\\{newfolder}')
+    print(f"Result and graphs are saved in '{os.getcwd()}\\{newfolder}'.")
+
+input('Please press ENTER to exit the program.\n')
