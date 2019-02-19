@@ -9,7 +9,7 @@ if True:
     import os
     from datetime import datetime as dt
 
-    print('Telegram Message Analyzer 19.1.2a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
+    print('Telegram Message Analyzer 19.2.19a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
           'Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.\n')
     folderpath=input('Please enter the directory path where all the messages#.html are located:\n')
     os.chdir(folderpath)
