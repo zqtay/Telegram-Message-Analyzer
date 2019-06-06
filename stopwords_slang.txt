@@ -8,11 +8,13 @@ ahha
 alr
 alrd
 also
+anot
 anw
 aw
 aww
 awww
 awwww
+bah
 bc
 btw
 cos
@@ -43,6 +45,7 @@ huh
 isnt
 it's
 k
+kk
 la
 lah
 leh
@@ -100,7 +103,8 @@ wot
 wow
 wut
 ya
-ya
+y'all
+yall
 yay
 yayy
 yayyy
