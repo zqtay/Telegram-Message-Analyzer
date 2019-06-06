@@ -21,7 +21,8 @@ cuz
 de
 ded
 don't
-did'nt
+dont
+didn't
 didnt
 dun
 eh
@@ -90,6 +91,7 @@ wah
 walao
 wanna
 want
+won't
 wont
 whot
 whr
