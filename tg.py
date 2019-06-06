@@ -6,11 +6,14 @@ if True:
     from bs4 import BeautifulSoup
     import pandas as pd
     from tqdm import tqdm
+    import imageio
     import matplotlib.pyplot as plt
+    plt.ioff()
     import os
+    import math
     from datetime import datetime as dt
 
-    print('Telegram Message Analyzer 19.6.6a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
+    print('Telegram Message Analyzer 19.6.7a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
           'Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.\n')
     data_path = input('Please enter the directory path where all the messages#.html are located:\n')
     os.chdir(data_path)
@@ -39,7 +42,7 @@ if True:
         for msg in msgs:
             # HTML element selection
             time = msg.find('div', class_ = "pull_right date details").get('title')
-            date = time.split()[0]
+            date = dt.strptime(time.split()[0], '%d.%m.%Y').strftime('%Y-%m-%d')
             hr = int(time.split()[1][:2])
             name = msg.find('div', class_ = "from_name")
             text = msg.find('div', class_ = "text")
@@ -58,20 +61,16 @@ if True:
             # Data aggregation
             if True:
                 try:
-                    msg_count[name][date] += 1
+                    msg_count[name][(date, hr)] += 1
                 except Exception as KeyError:
                     try:
-                        msg_count[name][date] = 1
+                        for h in range(24):
+                            msg_count[name][(date, h)] = 0
                     except Exception as KeyError:
-                        msg_count[name]= {date: 1}
-
-                try:
-                    msg_count_hr[name][hr] += 1
-                except Exception as KeyError:
-                    try:
-                        msg_count_hr[name][hr] = 1
-                    except Exception as KeyError:
-                        msg_count_hr[name] = {hr: 1}
+                        msg_count[name] = {}
+                        for h in range(24):
+                            msg_count[name][(date, h)] = 0
+                    msg_count[name][(date, hr)] = 1
 
                 try:
                     msg_text[name] += text + ' '
@@ -80,19 +79,11 @@ if True:
 
 # Data frame preparation
 if True:
-    # Message count by date
+    # Message count by date and time of day
     msg_count_df = pd.DataFrame(msg_count)
     msg_count_df.fillna(0, inplace = True)
-    msg_count_df.index = [dt.strptime(x, '%d.%m.%Y').strftime('%Y-%m-%d') for x in msg_count_df.index]
-    msg_count_df.sort_index(inplace = True)
-    msg_count_df = msg_count_df.astype(int).iloc[:,:2]
-
-    # Message count by time of day
-    msg_count_hr_df = pd.DataFrame(msg_count_hr)
-    msg_count_hr_df.fillna(0, inplace=True)
-    msg_count_hr_df.sort_index(inplace=True)
-    msg_count_hr_df = msg_count_hr_df.astype(int)
-    msg_count_hr_df = msg_count_hr_df.iloc[:, :2]
+    msg_count_df.sort_index(level = [0, 1], inplace = True)
+    msg_count_df = msg_count_df.astype('int').iloc[:,:2]
 
     # Names
     names = list(msg_count_df.columns)
@@ -155,37 +146,37 @@ if True:
 if True:
     # Message count vs. date
     graph_date = plt.figure(1, figsize = (30, 10))
-    plt.bar([dt.strptime(date,'%Y-%m-%d') for date in msg_count_df.index],
-            msg_count_df[name_0],
+    plt.bar(msg_count_df.index.levels[0],
+            msg_count_df[name_0].sum(level = 0),
             label = name_0)
-    plt.bar([dt.strptime(date,'%Y-%m-%d') for date in msg_count_df.index],
-            msg_count_df[name_1],
+    plt.bar(msg_count_df.index.levels[0],
+            msg_count_df[name_1].sum(level = 0),
             label = name_1,
-            bottom = msg_count_df[name_0])
+            bottom = msg_count_df[name_0].sum(level = 0))
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Date')
     plt.xlabel('Date')
     plt.ylabel('No. of messages')
     plt.legend()
 
-    # Message count vs. hour of day
-    graph_hr=plt.figure(2)
-    plt.bar([hr for hr in msg_count_hr_df.index], msg_count_hr_df[name_0], label=name_0)
-    plt.bar([hr for hr in msg_count_hr_df.index], msg_count_hr_df[name_1], label=name_1, bottom=msg_count_hr_df[name_0])
+    # Message count vs. time of day
+    graph_hr = plt.figure(2)
+    plt.xlim((-1,24))
+    plt.bar(msg_count_df.index.levels[1],
+            msg_count_df[name_0].sum(level = 1),
+            label=name_0)
+    plt.bar(msg_count_df.index.levels[1],
+            msg_count_df[name_0].sum(level = 1),
+            label=name_1,
+            bottom = msg_count_df[name_0].sum(level = 1))
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day')
     plt.xlabel('Time of day')
     plt.ylabel('No. of messages')
     plt.legend()
 
-# Result and graph display. Switch on to display.
-if False:
-    graph_hr.show()
-    graph_date.show()
-    display(chat_stats_report, msg_count_df, msg_count_hr_df, most_used_df_0, most_used_df_1)
-
 # Result and graph saving
 if True:
-    result_folder=str(dt.now()).replace(':', '.')
-    os.makedirs(result_folder)
+    result_folder = str(dt.now()).replace(':', '.')
+    os.mkdir(result_folder)
     with open(f'{result_folder}\\tganalysis.txt', 'w', encoding='utf8') as f:
         f.writelines("%s\n\n" % line for line in
                      [f'{name_0} & {name_1} Telegram Message Analysis Report\n' +
@@ -194,15 +185,52 @@ if True:
                       'Summary:',
                       chat_stats_report.to_string(),
                       'Message frequency by date:',
-                      msg_count_df.to_string(),
+                      msg_count_df.sum(level = 0).sort_index().to_string(),
                      'Message frequency by time of day:',
-                      msg_count_hr_df.to_string(),
+                      msg_count_df.sum(level = 1).sort_index().to_string(),
                       'Words with the highest occurrence:',
                       most_used_df_0.to_string(),
                       most_used_df_1.to_string()])
         f.close()
-    graph_date.savefig(f'{result_folder}\graphdate')
-    graph_hr.savefig(f'{result_folder}\graphhr')
+    graph_date.savefig(f'{result_folder}\graph_date')
+    graph_hr.savefig(f'{result_folder}\graph_hr')
+    msg_count_df.to_csv(f'{result_folder}\msg_count_df.csv')
     print(f"Result and graphs are saved in '{os.getcwd()}\\{result_folder}'.")
+
+# Aggregated message count GIF creation
+if True:
+    os.mkdir(f'{result_folder}\\agg_graph_hr')
+    agg = {}
+    for name in names:
+        agg[name] = {}
+        for h in range(24):
+            agg[name][h] = 0
+    agg_df = pd.DataFrame(agg).fillna(value = 0).astype('int')
+
+    for date in tqdm(msg_count_df.index.levels[0]):
+        agg_df += msg_count_df.loc[date]
+        agg_graph_hr = plt.figure(3)
+        plt.xlim((-1,24))
+        ylim_max = int(math.ceil(msg_count_df.sum(level=1).sum(axis=1).max() / 1000) * 1000)
+        plt.ylim((0,ylim_max))
+        plt.bar(agg_df[name_0].index,
+                agg_df[name_0],
+                label=name_0)
+        plt.bar(agg_df[name_1].index,
+                agg_df[name_1],
+                label=name_1,
+                bottom = agg_df[name_0])
+        plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day\nby {date}')
+        plt.xlabel('Time of day')
+        plt.ylabel('No. of messages')
+        plt.legend()
+        agg_graph_hr.savefig(f'{result_folder}\\agg_graph_hr\{date}.png')
+        plt.close()
+
+    with imageio.get_writer(f'{result_folder}\\agg_graph_hr.gif', mode='I') as writer:
+        for filename in os.listdir(f'{result_folder}\\agg_graph_hr'):
+            image = imageio.imread(f'{result_folder}\\agg_graph_hr\\{filename}')
+            writer.append_data(image)
+    writer.close()
 
 input('Please press ENTER to exit the program.\n')
