@@ -4,6 +4,7 @@ actually
 ah
 aha
 ahaha
+ahahah
 ahha
 alr
 alrd
@@ -22,9 +23,9 @@ coz
 cuz
 de
 ded
-don't
+don\'t
 dont
-didn't
+didn\'t
 didnt
 dun
 eh
@@ -43,7 +44,7 @@ hehe
 hehehe
 huh
 isnt
-it's
+it\'s
 k
 kk
 la
@@ -52,7 +53,10 @@ leh
 lel
 liao
 lmao
+lo
+loh
 lol
+lor
 lul
 mah
 maybe
@@ -69,6 +73,7 @@ okkk
 omg
 ooh
 ooo
+orh
 pls
 ppl
 q
@@ -79,7 +84,7 @@ shld
 sia
 sian
 sth
-that's
+that\'s
 thats
 tho
 u
@@ -94,7 +99,7 @@ wah
 walao
 wanna
 want
-won't
+won\'t
 wont
 whot
 whr
@@ -103,7 +108,7 @@ wot
 wow
 wut
 ya
-y'all
+y\'all
 yall
 yay
 yayy
