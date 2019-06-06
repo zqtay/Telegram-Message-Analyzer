@@ -177,10 +177,10 @@ if True:
 if True:
     result_folder = str(dt.now()).replace(':', '.')
     os.mkdir(result_folder)
-    with open(f'{result_folder}\\tganalysis.txt', 'w', encoding='utf8') as f:
+    with open(f'{result_folder}\\msg_analysis.txt', 'w', encoding='utf8') as f:
         f.writelines("%s\n\n" % line for line in
                      [f'{name_0} & {name_1} Telegram Message Analysis Report\n' +
-                      f'From {str(msg_count_df.index[0]).split()[0]} To {str(msg_count_df.index[-1]).split()[0]}:',
+                      f'From {msg_count_df.index[0][0]} To {msg_count_df.index[-1][0]}:',
                       f'(This analysis report is generated in {result_folder})',
                       'Summary:',
                       chat_stats_report.to_string(),
