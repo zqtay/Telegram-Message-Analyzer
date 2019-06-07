@@ -195,42 +195,42 @@ if True:
     graph_date.savefig(f'{result_folder}\graph_date')
     graph_hr.savefig(f'{result_folder}\graph_hr')
     msg_count_df.to_csv(f'{result_folder}\msg_count_df.csv')
-    print(f"Result and graphs are saved in '{os.getcwd()}\\{result_folder}'.")
 
-# Aggregated message count GIF creation
+# Cumulative message count GIF creation
 if True:
-    os.mkdir(f'{result_folder}\\agg_graph_hr')
-    agg = {}
+    os.mkdir(f'{result_folder}\\cum_graph_hr')
+    cum = {}
     for name in names:
-        agg[name] = {}
+        cum[name] = {}
         for h in range(24):
-            agg[name][h] = 0
-    agg_df = pd.DataFrame(agg).fillna(value = 0).astype('int')
+            cum[name][h] = 0
+    cum_df = pd.DataFrame(cum).fillna(value = 0).astype('int')
 
     for date in tqdm(msg_count_df.index.levels[0]):
-        agg_df += msg_count_df.loc[date]
-        agg_graph_hr = plt.figure(3)
-        plt.xlim((-1,24))
+        cum_df += msg_count_df.loc[date]
+        cum_graph_hr = plt.figure(3)
+        plt.xlim((-1, 24))
         ylim_max = int(math.ceil(msg_count_df.sum(level=1).sum(axis=1).max() / 1000) * 1000)
-        plt.ylim((0,ylim_max))
-        plt.bar(agg_df[name_0].index,
-                agg_df[name_0],
+        plt.ylim((0, ylim_max))
+        plt.bar(cum_df[name_0].index,
+                cum_df[name_0],
                 label=name_0)
-        plt.bar(agg_df[name_1].index,
-                agg_df[name_1],
+        plt.bar(cum_df[name_1].index,
+                cum_df[name_1],
                 label=name_1,
-                bottom = agg_df[name_0])
+                bottom = cum_df[name_0])
         plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day\nby {date}')
         plt.xlabel('Time of day')
         plt.ylabel('No. of messages')
         plt.legend()
-        agg_graph_hr.savefig(f'{result_folder}\\agg_graph_hr\{date}.png')
+        cum_graph_hr.savefig(f'{result_folder}\\cum_graph_hr\{date}.png')
         plt.close()
 
-    with imageio.get_writer(f'{result_folder}\\agg_graph_hr.gif', mode='I') as writer:
-        for filename in os.listdir(f'{result_folder}\\agg_graph_hr'):
-            image = imageio.imread(f'{result_folder}\\agg_graph_hr\\{filename}')
+    with imageio.get_writer(f'{result_folder}\\cum_graph_hr.gif', mode='I') as writer:
+        for filename in os.listdir(f'{result_folder}\\cum_graph_hr'):
+            image = imageio.imread(f'{result_folder}\\cum_graph_hr\\{filename}')
             writer.append_data(image)
     writer.close()
-
+    
+print(f"Result and graphs are saved in '{os.getcwd()}\\{result_folder}'.")
 input('Please press ENTER to exit the program.\n')
