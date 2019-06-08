@@ -1,5 +1,6 @@
 # This is a Telegram message analyzer.
 # Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.
+VERSION = '19.6.8a'
 
 # Process preparation
 if True:
@@ -10,42 +11,50 @@ if True:
     import matplotlib.pyplot as plt
     plt.ioff()
     import os
-    import math
+    from math import ceil
+    from statistics import mean, stdev, median
     from datetime import datetime as dt
 
-    print('Telegram Message Analyzer 19.6.7a. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
+    print(f'Telegram Message Analyzer {VERSION}. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
           'Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.\n')
     data_path = input('Please enter the directory path where all the messages#.html are located:\n')
     os.chdir(data_path)
+    html_pages = [i for i in os.listdir(data_path) if i.startswith('message') and i.endswith('.html')]
+    assert len(html_pages) > 0, 'No chat history files are found in this directory!'
+    print(f'{len(html_pages)} chat history files found.')
 
     stopwords_path = input('Please enter the directory path where all the stopwords_{language}.txt are located:\n')
+    stopwords_files = [i for i in os.listdir(stopwords_path) if i.startswith('stopwords') and i.endswith('.txt')]
     stopwords = []
-    for stopword_txt in [i for i in os.listdir(stopwords_path) if i.startswith('stopwords') and i.endswith('.txt')]:
-        stopwords += open(stopword_txt,'r').read().split('\n')
-    stopwords = set(stopwords)
+    if len(stopwords_files) == 0:
+        input('No stopwords files are found in this directory! Press any key to continue.')
+    else:
+        input(f'{len(stopwords_files)} stopwords files found. Press any key to continue.')
+        for stopword_txt in stopwords_files:
+            stopwords += open(stopword_txt, 'r').read().split('\n')
+        stopwords = set(stopwords)
 
 # Empty variables creation
 if True:
-    msg_count = {}              # {name_0: {date0: count, date1: count}, name_1: {date0: count ... }}
-    msg_text = {}               # {name_0: 'string of concatenated texts', name_1: ... }
-    word_count = {}             # {name_0: {word0: count0, word1: count1, ... }, name_1: {word0: ... }}
-    most_used = {}              # {name_0: [topword0, topword1, topword2, ... ], name_1: [topword0 ... ]}
-    most_used_filtered = {}     # Stopwords filtered
-    msg_count_hr = {}           # {name_0: {hour0: count, hour1: count}, name_1: {hour0: count ... }}
+    msg_count = {}  # {name_0: {(date_0, hr_0): count, (date_0, hr_1): count}, name_1: {(date_0, hr_0): count ... }}
+    msg_text = {}  # {name_0: 'string of concatenated texts', name_1: ... }
+    word_count = {}  # {name_0: {word_0: count, word_1: count, ... }, name_1: {word_0: ... }}
+    most_used = {}  # {name_0: [word_0, word_1, word_2, ... ], name_1: [word_0 ... ]}
+    most_used_filtered = {}  # Stopwords filtered
+    char_count = {}  # {name_0: [count, count, ... ], name_1: [count ...]}
 
 # HTML parsing
 if True:
-    html_pages = [i for i in os.listdir(data_path) if i.startswith('message') and i.endswith('.html')]
     for html_page in tqdm(html_pages):
-        soup = BeautifulSoup(open(html_page, encoding ='utf8'), 'html.parser')
-        msgs = soup.find_all(class_ = lambda x: x and x.startswith('message default'))
+        soup = BeautifulSoup(open(html_page, encoding='utf8'), 'html.parser')
+        msgs = soup.find_all(class_=lambda x: x and x.startswith('message default'))
         for msg in msgs:
             # HTML element selection
-            time = msg.find('div', class_ = "pull_right date details").get('title')
+            time = msg.find('div', class_="pull_right date details").get('title')
             date = dt.strptime(time.split()[0], '%d.%m.%Y').strftime('%Y-%m-%d')
             hr = int(time.split()[1][:2])
-            name = msg.find('div', class_ = "from_name")
-            text = msg.find('div', class_ = "text")
+            name = msg.find('div', class_="from_name")
+            text = msg.find('div', class_="text")
 
             if name is not None:
                 name = name.text.strip()
@@ -77,13 +86,18 @@ if True:
                 except Exception as KeyError:
                     msg_text[name] = text + ' '
 
+                try:
+                    char_count[name].append(len(text.replace(' ', '')))
+                except:
+                    char_count[name] = [len(text.replace(' ', ''))]
+
 # Data frame preparation
 if True:
     # Message count by date and time of day
     msg_count_df = pd.DataFrame(msg_count)
-    msg_count_df.fillna(0, inplace = True)
-    msg_count_df.sort_index(level = [0, 1], inplace = True)
-    msg_count_df = msg_count_df.astype('int').iloc[:,:2]
+    msg_count_df.fillna(0, inplace=True)
+    msg_count_df.sort_index(level=[0, 1], inplace=True)
+    msg_count_df = msg_count_df.astype('int').iloc[:, :2]
 
     # Names
     names = list(msg_count_df.columns)
@@ -91,25 +105,25 @@ if True:
 
 # Data analysis
 if True:
-    # Message count
+    # Message count calculation
     chat_stats = {}
-    both_total_char = 0
     for name in names:
         chat_stats[name] = {}
-        chat_stats[name]['total_msg'] = msg_count_df[name].sum()
-        chat_stats[name]['msg_ratio'] = round(msg_count_df[name].sum() / msg_count_df.sum().sum(), 3)
-        chat_stats[name]['median_msg_per_day'] = msg_count_df[name].median()
-        chat_stats[name]['avg_msg_per_day'] = f'{round(msg_count_df[name].mean(), 3)} +- {round(msg_count_df[name].std(), 3)}'
-        chat_stats[name]['total_char'] = len(msg_text[name].replace(' ', ''))
-        chat_stats[name]['avg_char_per_msg'] = round(chat_stats[name]['total_char'] / chat_stats[name]['total_msg'], 3)
-        both_total_char += chat_stats[name]['total_char']
+        chat_stats[name]['Total message count'] = msg_count_df[name].sum()
+        chat_stats[name]['Total message ratio'] = round(msg_count_df[name].sum() / msg_count_df.sum().sum(), 3)
+        chat_stats[name][
+            'Average message count per day'] = f'{round(msg_count_df[name].sum(level = 0).mean(), 3)} +- {round(msg_count_df[name].sum(level = 0).std(), 3)}'
+        chat_stats[name]['Median message count per day'] = msg_count_df[name].sum(level=0).median()
+        chat_stats[name]['Total character count'] = sum(char_count[name])
+        chat_stats[name]['Total character ratio'] = round(
+            sum(char_count[name]) / sum([sum(i) for i in char_count.values()]), 3)
+        chat_stats[name][
+            'Average character count per message'] = f'{round(mean(char_count[name]), 3)} +- {round(stdev(char_count[name]), 3)}'
+        chat_stats[name]['Median character count per message'] = median(char_count[name])
 
+    # Word count & most used words calculation
     for name in names:
-        chat_stats[name]['char_ratio'] = round(chat_stats[name]['total_char'] / both_total_char,3)
-
-    # Word count & most used words
-    for name in names:
-        wcount={}
+        wcount = {}
         for word in msg_text[name].split():
             try:
                 wcount[word] += 1
@@ -117,9 +131,10 @@ if True:
                 wcount[word] = 1
         word_count[name] = wcount
         most_used[name] = sorted(word_count[name],
-                                 key = word_count[name].get,
-                                 reverse = True)
+                                 key=word_count[name].get,
+                                 reverse=True)
 
+    # Stopwords filtering
     most_used_filtered = most_used.copy()
     for name in names:
         for stopword in stopwords:
@@ -127,32 +142,25 @@ if True:
                 most_used_filtered[name].remove(stopword)
 
     # Results in dataframes
-    chat_stats_report = pd.DataFrame(chat_stats).rename(
-                         index={'total_msg':'Total message count',
-                                'msg_ratio':'Total message ratio',
-                                'total_char':'Total character count',
-                                'char_ratio':'Total character ratio',
-                                'avg_char_per_msg':'Average character count per message',
-                                'avg_msg_per_day':'Average message count per day',
-                                'median_msg_per_day':'Median message count per day'})
-    most_used_df_0 = pd.DataFrame(data = [word_count[name_0][x] for x in most_used_filtered[name_0][0:100]],
-                                  index = most_used_filtered[name_0][0:100],
-                                  columns = [name_0])
-    most_used_df_1 = pd.DataFrame(data = [word_count[name_1][x] for x in most_used_filtered[name_1][0:100]],
-                                  index = most_used_filtered[name_1][0:100],
-                                  columns = [name_1])
+    chat_stats_report = pd.DataFrame(chat_stats)
+    most_used_df_0 = pd.DataFrame(data=[word_count[name_0][x] for x in most_used_filtered[name_0][0:100]],
+                                  index=most_used_filtered[name_0][0:100],
+                                  columns=[name_0])
+    most_used_df_1 = pd.DataFrame(data=[word_count[name_1][x] for x in most_used_filtered[name_1][0:100]],
+                                  index=most_used_filtered[name_1][0:100],
+                                  columns=[name_1])
 
 # Graph plotting
 if True:
     # Message count vs. date
-    graph_date = plt.figure(1, figsize = (30, 10))
+    graph_date = plt.figure(1, figsize=(30, 10))
     plt.bar(msg_count_df.index.levels[0],
-            msg_count_df[name_0].sum(level = 0),
-            label = name_0)
+            msg_count_df[name_0].sum(level=0),
+            label=name_0)
     plt.bar(msg_count_df.index.levels[0],
-            msg_count_df[name_1].sum(level = 0),
-            label = name_1,
-            bottom = msg_count_df[name_0].sum(level = 0))
+            msg_count_df[name_1].sum(level=0),
+            label=name_1,
+            bottom=msg_count_df[name_0].sum(level=0))
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Date')
     plt.xlabel('Date')
     plt.ylabel('No. of messages')
@@ -160,14 +168,14 @@ if True:
 
     # Message count vs. time of day
     graph_hr = plt.figure(2)
-    plt.xlim((-1,24))
+    plt.xlim((-1, 24))
     plt.bar(msg_count_df.index.levels[1],
-            msg_count_df[name_0].sum(level = 1),
+            msg_count_df[name_0].sum(level=1),
             label=name_0)
     plt.bar(msg_count_df.index.levels[1],
-            msg_count_df[name_0].sum(level = 1),
+            msg_count_df[name_0].sum(level=1),
             label=name_1,
-            bottom = msg_count_df[name_0].sum(level = 1))
+            bottom=msg_count_df[name_0].sum(level=1))
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day')
     plt.xlabel('Time of day')
     plt.ylabel('No. of messages')
@@ -184,10 +192,10 @@ if True:
                       f'(This analysis report is generated in {result_folder})',
                       'Summary:',
                       chat_stats_report.to_string(),
-                      'Message frequency by date:',
-                      msg_count_df.sum(level = 0).sort_index().to_string(),
-                     'Message frequency by time of day:',
-                      msg_count_df.sum(level = 1).sort_index().to_string(),
+                      'Message count by date:',
+                      msg_count_df.sum(level=0).sort_index().to_string(),
+                      'Message count by time of day:',
+                      msg_count_df.sum(level=1).sort_index().to_string(),
                       'Words with the highest occurrence:',
                       most_used_df_0.to_string(),
                       most_used_df_1.to_string()])
@@ -204,13 +212,13 @@ if True:
         cum[name] = {}
         for h in range(24):
             cum[name][h] = 0
-    cum_df = pd.DataFrame(cum).fillna(value = 0).astype('int')
+    cum_df = pd.DataFrame(cum).fillna(value=0).astype('int')
 
     for date in tqdm(msg_count_df.index.levels[0]):
         cum_df += msg_count_df.loc[date]
         cum_graph_hr = plt.figure(3)
         plt.xlim((-1, 24))
-        ylim_max = int(math.ceil(msg_count_df.sum(level=1).sum(axis=1).max() / 1000) * 1000)
+        ylim_max = int(ceil(msg_count_df.sum(level=1).sum(axis=1).max() / 1000) * 1000)
         plt.ylim((0, ylim_max))
         plt.bar(cum_df[name_0].index,
                 cum_df[name_0],
@@ -218,8 +226,8 @@ if True:
         plt.bar(cum_df[name_1].index,
                 cum_df[name_1],
                 label=name_1,
-                bottom = cum_df[name_0])
-        plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day\nby {date}')
+                bottom=cum_df[name_0])
+        plt.title(f'{name_0} & {name_1}\nCumulative Telegram Message Count by Time of Day\nby {date}')
         plt.xlabel('Time of day')
         plt.ylabel('No. of messages')
         plt.legend()
@@ -231,6 +239,6 @@ if True:
             image = imageio.imread(f'{result_folder}\\cum_graph_hr\\{filename}')
             writer.append_data(image)
     writer.close()
-    
+
 print(f"Result and graphs are saved in '{os.getcwd()}\\{result_folder}'.")
-input('Please press ENTER to exit the program.\n')
+input('Press any key to exit the program.\n')
