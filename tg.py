@@ -1,6 +1,6 @@
 # This is a Telegram message analyzer.
 # Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.
-VERSION = '19.7.8a'
+VERSION = '19.7.8b'
 
 # Process preparation
 if True:
@@ -154,10 +154,11 @@ if True:
 if True:
     # Message count vs. date
     graph_date = plt.figure(1, figsize=(30, 10))
-    plt.bar(msg_count_df.index.levels[0],
+    date_list = [dt.strptime(date,'%Y-%m-%d') for date in msg_count_df.index.levels[0]]
+    plt.bar(date_list,
             msg_count_df[name_0].sum(level=0),
             label=name_0)
-    plt.bar(msg_count_df.index.levels[0],
+    plt.bar(date_list,
             msg_count_df[name_1].sum(level=0),
             label=name_1,
             bottom=msg_count_df[name_0].sum(level=0))
