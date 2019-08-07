@@ -1,6 +1,6 @@
 # This is a Telegram message analyzer.
 # Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.
-VERSION = '19.6.8a'
+VERSION = '19.7.8a'
 
 # Process preparation
 if True:
@@ -30,8 +30,8 @@ if True:
         input('No stopwords files are found in this directory! Press any key to continue.')
     else:
         input(f'{len(stopwords_files)} stopwords files found. Press any key to continue.')
-        for stopword_txt in stopwords_files:
-            stopwords += open(stopword_txt, 'r').read().split('\n')
+        for stopwords_file in stopwords_files:
+            stopwords += open(os.path.join(stopwords_path,stopwords_file), 'r').read().split('\n')
         stopwords = set(stopwords)
 
 # Empty variables creation
