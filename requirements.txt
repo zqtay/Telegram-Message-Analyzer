@@ -1,0 +1,5 @@
+beautifulsoup4>= 4.6.3
+pandas>=0.23.4
+tqdm>=4.31.1
+imageio>=2.5.0
+matplotlib>=3.0.2
