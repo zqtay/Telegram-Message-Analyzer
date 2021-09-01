@@ -1,20 +1,23 @@
 # This is a Telegram message analyzer.
 # Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.
-VERSION = '19.7.8b'
+VERSION = '21.9.1'
 
+from bs4 import BeautifulSoup
+import pandas as pd
+from tqdm import tqdm
+import imageio
+import matplotlib
+import matplotlib.pyplot as plt
+import os
+from math import ceil
+from statistics import mean, stdev, median
+from datetime import datetime as dt
+
+plt.ioff()
+matplotlib.use("Agg")
+    
 # Process preparation
-if True:
-    from bs4 import BeautifulSoup
-    import pandas as pd
-    from tqdm import tqdm
-    import imageio
-    import matplotlib.pyplot as plt
-    plt.ioff()
-    import os
-    from math import ceil
-    from statistics import mean, stdev, median
-    from datetime import datetime as dt
-
+if True:  
     print(f'Telegram Message Analyzer {VERSION}. Developed by Tay Zong Qing: https://github.com/zqtay/.\n'
           'Please go to https://telegram.org/blog/export-and-more for instruction on how to export chat history.\n')
     data_path = input('Please enter the directory path where all the messages#.html are located:\n')
@@ -24,16 +27,23 @@ if True:
     print(f'{len(html_pages)} chat history files found.')
 
     stopwords_path = input('Please enter the directory path where all the stopwords_{language}.txt are located:\n')
-    stopwords_files = [i for i in os.listdir(stopwords_path) if i.startswith('stopwords') and i.endswith('.txt')]
     stopwords = []
-    if len(stopwords_files) == 0:
-        input('No stopwords files are found in this directory! Press any key to continue.')
+    if os.path.isdir(stopwords_path) == False:
+        input("No path entered. Press any key to continue.")
     else:
-        input(f'{len(stopwords_files)} stopwords files found. Press any key to continue.')
-        for stopwords_file in stopwords_files:
-            stopwords += open(os.path.join(stopwords_path,stopwords_file), 'r').read().split('\n')
-        stopwords = set(stopwords)
-
+        stopwords_files = [i for i in os.listdir(stopwords_path) if i.startswith('stopwords') and i.endswith('.txt')]
+        if len(stopwords_files) == 0:
+            input('No stopwords files are found in this directory! Press any key to continue.')
+        else:
+            input(f'{len(stopwords_files)} stopwords files found. Press any key to continue.')
+            for stopwords_file in stopwords_files:
+                stopwords += open(os.path.join(stopwords_path,stopwords_file), 'r').read().split('\n')
+            stopwords = set(stopwords)
+        
+    # Create result folder
+    result_folder = str(dt.now()).replace(':', '.')
+    os.mkdir(result_folder)
+    
 # Empty variables creation
 if True:
     msg_count = {}  # {name_0: {(date_0, hr_0): count, (date_0, hr_1): count}, name_1: {(date_0, hr_0): count ... }}
@@ -112,8 +122,8 @@ if True:
         chat_stats[name]['Total message count'] = msg_count_df[name].sum()
         chat_stats[name]['Total message ratio'] = round(msg_count_df[name].sum() / msg_count_df.sum().sum(), 3)
         chat_stats[name][
-            'Average message count per day'] = f'{round(msg_count_df[name].sum(level = 0).mean(), 3)} +- {round(msg_count_df[name].sum(level = 0).std(), 3)}'
-        chat_stats[name]['Median message count per day'] = msg_count_df[name].sum(level=0).median()
+            'Average message count per day'] = f'{round(msg_count_df[name].groupby(level=0).sum().mean(), 3)} +- {round(msg_count_df[name].groupby(level=0).sum().std(), 3)}'
+        chat_stats[name]['Median message count per day'] = msg_count_df[name].groupby(level=0).sum().median()
         chat_stats[name]['Total character count'] = sum(char_count[name])
         chat_stats[name]['Total character ratio'] = round(
             sum(char_count[name]) / sum([sum(i) for i in char_count.values()]), 3)
@@ -156,12 +166,12 @@ if True:
     graph_date = plt.figure(1, figsize=(30, 10))
     date_list = [dt.strptime(date,'%Y-%m-%d') for date in msg_count_df.index.levels[0]]
     plt.bar(date_list,
-            msg_count_df[name_0].sum(level=0),
+            msg_count_df[name_0].groupby(level=0).sum(),
             label=name_0)
     plt.bar(date_list,
-            msg_count_df[name_1].sum(level=0),
+            msg_count_df[name_1].groupby(level=0).sum(),
             label=name_1,
-            bottom=msg_count_df[name_0].sum(level=0))
+            bottom=msg_count_df[name_0].groupby(level=0).sum())
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Date')
     plt.xlabel('Date')
     plt.ylabel('No. of messages')
@@ -171,12 +181,12 @@ if True:
     graph_hr = plt.figure(2)
     plt.xlim((-1, 24))
     plt.bar(msg_count_df.index.levels[1],
-            msg_count_df[name_0].sum(level=1),
+            msg_count_df[name_0].groupby(level=1).sum(),
             label=name_0)
     plt.bar(msg_count_df.index.levels[1],
-            msg_count_df[name_0].sum(level=1),
+            msg_count_df[name_0].groupby(level=1).sum(),
             label=name_1,
-            bottom=msg_count_df[name_0].sum(level=1))
+            bottom=msg_count_df[name_0].groupby(level=1).sum())
     plt.title(f'{name_0} & {name_1}\nTelegram Message Count by Time of Day')
     plt.xlabel('Time of day')
     plt.ylabel('No. of messages')
@@ -184,8 +194,6 @@ if True:
 
 # Result and graph saving
 if True:
-    result_folder = str(dt.now()).replace(':', '.')
-    os.mkdir(result_folder)
     with open(f'{result_folder}\\msg_analysis.txt', 'w', encoding='utf8') as f:
         f.writelines("%s\n\n" % line for line in
                      [f'{name_0} & {name_1} Telegram Message Analysis Report\n' +
@@ -194,9 +202,9 @@ if True:
                       'Summary:',
                       chat_stats_report.to_string(),
                       'Message count by date:',
-                      msg_count_df.sum(level=0).sort_index().to_string(),
+                      msg_count_df.groupby(level=0).sum().sort_index().to_string(),
                       'Message count by time of day:',
-                      msg_count_df.sum(level=1).sort_index().to_string(),
+                      msg_count_df.groupby(level=1).sum().sort_index().to_string(),
                       'Words with the highest occurrence:',
                       most_used_df_0.to_string(),
                       most_used_df_1.to_string()])
@@ -219,7 +227,7 @@ if True:
         cum_df += msg_count_df.loc[date]
         cum_graph_hr = plt.figure(3)
         plt.xlim((-1, 24))
-        ylim_max = int(ceil(msg_count_df.sum(level=1).sum(axis=1).max() / 1000) * 1000)
+        ylim_max = int(ceil(msg_count_df.groupby(level=1).sum().sum(axis=1).max() / 1000) * 1000)
         plt.ylim((0, ylim_max))
         plt.bar(cum_df[name_0].index,
                 cum_df[name_0],
@@ -234,12 +242,14 @@ if True:
         plt.legend()
         cum_graph_hr.savefig(f'{result_folder}\\cum_graph_hr\{date}.png')
         plt.close()
-
+    
+    print("Generating GIF...")
+    
     with imageio.get_writer(f'{result_folder}\\cum_graph_hr.gif', mode='I') as writer:
         for filename in os.listdir(f'{result_folder}\\cum_graph_hr'):
             image = imageio.imread(f'{result_folder}\\cum_graph_hr\\{filename}')
             writer.append_data(image)
-    writer.close()
+        writer.close()
 
 print(f"Result and graphs are saved in '{os.getcwd()}\\{result_folder}'.")
 input('Press any key to exit the program.\n')
